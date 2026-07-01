@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 
-from app.schemas.cert_request import CertificateRequest
-from app.schemas.certificate import Certificate
-from app.schemas.user import User
+from app.domain.models.certificate import Certificate
+from app.domain.models.certificate_request import CertificateRequest
+from app.domain.models.user import User
 
 
-@dataclass
+@dataclass(frozen=True, slots=True)
 class Dataset:
-    certificates: list[Certificate]
-    users: list[User]
-    cert_requests: list[CertificateRequest]
+    certificates: tuple[Certificate, ...]
+    cert_requests: tuple[CertificateRequest, ...]
+    users: tuple[User, ...]
