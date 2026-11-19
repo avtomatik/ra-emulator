@@ -32,5 +32,10 @@ def cert_requests_url() -> str:
 
 
 @pytest.fixture
+def rev_requests_url() -> str:
+    return "/api/ra/revRequests"
+
+
+@pytest.fixture
 def users_url() -> str:
     return "/api/ra/users"

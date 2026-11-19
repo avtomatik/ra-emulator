@@ -22,13 +22,17 @@ def write(name, data):
 def make_user(rng: Random):
     gender = rng.choice(list(Gender))
     if gender == Gender.FEMALE:
-        first = fake.first_name_female()
-        middle = fake.middle_name_female()
-        last = fake.last_name_female()
+        first, middle, last = (
+            fake.first_name_female(),
+            fake.middle_name_female(),
+            fake.last_name_female(),
+        )
     else:
-        first = fake.first_name_male()
-        middle = fake.middle_name_male()
-        last = fake.last_name_male()
+        first, middle, last = (
+            fake.first_name_male(),
+            fake.middle_name_male(),
+            fake.last_name_male(),
+        )
     cn = f"{last} {first} {middle}"
     return {
         "id": str(uuid.uuid4()),
@@ -47,7 +51,7 @@ def make_user(rng: Random):
     }
 
 
-def make_request(user, rng: Random):
+def make_cert_request(user, rng: Random):
     created = datetime.now(timezone.utc)
     return {
         "id": str(uuid.uuid4()),
@@ -92,26 +96,47 @@ def make_certificate(user, request, rng: Random):
     }
 
 
+def make_rev_request(user, rng: Random):
+    created = datetime.now(timezone.utc)
+    resolved = datetime.now(timezone.utc)
+    auth_replied = datetime.now(timezone.utc)
+    return {
+        "revRequestId": str(uuid.uuid4()),
+        "createdWhen": created.isoformat(),
+        "resolvedWhen": resolved.isoformat(),
+        "authRepliedWhen": auth_replied.isoformat(),
+        "serialNumber": "to-do",
+        "thumbprint": "to-do",
+        "status": "RevocationRequestStatus:TO_DO",
+        "userId": user["id"],
+    }
+
+
 def main(number: int = 100, seed: int = 42):
     rng = Random(seed)
     Faker.seed(seed)
     users = []
-    requests = []
+    cert_requests = []
     certs = []
+    rev_requests = []
     for _ in range(number):
         user = make_user(rng)
-        req = make_request(user, rng)
-        cert = make_certificate(user, req, rng)
+        cert_request = make_cert_request(user, rng)
+        cert = make_certificate(user, cert_request, rng)
+        rev_request = make_rev_request(user, rng)
         users.append(user)
-        requests.append(req)
+        cert_requests.append(cert_request)
         certs.append(cert)
+        rev_requests.append(rev_request)
     write("users", users)
-    write("cert_requests", requests)
+    write("cert_requests", cert_requests)
     write("certificates", certs)
+    write("rev_requests", rev_requests)
     print("✔ deterministic dataset generated")
     print(f"users={len(users)}")
-    print(f"requests={len(requests)}")
+    print(f"cert_requests={len(cert_requests)}")
     print(f"certificates={len(certs)}")
+    print(f"rev_requests={len(rev_requests)}")
 
 
 if __name__ == "__main__":
