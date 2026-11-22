@@ -21,7 +21,10 @@ class UserService:
         if query:
             users = self._filter(users, query)
         page = Paginator.paginate(
-            items=users, page_token=page_token, endpoint=self.endpoint
+            items=users,
+            page_token=page_token,
+            endpoint=self.endpoint,
+            query_params={"q": query} if query else None,
         )
         return PageResult(items=user_summaries(page.items), links=page.links)
 

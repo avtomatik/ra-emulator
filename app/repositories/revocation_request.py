@@ -1,9 +1,8 @@
-from uuid import UUID
-
 from app.domain.models.revocation_request import RevocationRequest
-from app.repositories.base import InMemoryRepository
+from app.repositories.base import SQLiteRepository
 
 
-class RevocationRequestRepository(InMemoryRepository[RevocationRequest]):
-    def by_id(self, request_id: UUID) -> RevocationRequest | None:
-        return self.find(lambda request: request.id == request_id)
+class RevocationRequestRepository(SQLiteRepository[RevocationRequest]):
+    kind = "rev_requests"
+    model_type = RevocationRequest
+    id_field = "rev_request_id"

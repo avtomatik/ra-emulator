@@ -9,11 +9,11 @@ from app.domain.constants.enums import (RevocationReason,
 class RevocationRequestBaseDTO(DTOModel):
     rev_request_id: UUID
     created_when: datetime
-    resolved_when: datetime
-    auth_replied_when: datetime
     serial_number: str
     thumbprint: str
     status: RevocationRequestStatus
+    resolved_when: datetime | None = None
+    auth_replied_when: datetime | None = None
 
 
 class RevocationRequestSummaryDTO(RevocationRequestBaseDTO): ...
@@ -31,3 +31,13 @@ class RevocationRequestDetailDTO(RevocationRequestSummaryDTO):
     revocation_reason: RevocationReason | None = None
     raw_request: bytes | None = None
     folder: str | None = None
+
+
+class CreateRevocationRequestDTO(DTOModel):
+    certificate_id: UUID
+    revocation_reason: RevocationReason = RevocationReason.KEY_COMPROMISE
+    creator_id: UUID | None = None
+
+
+class ResolveRevocationRequestDTO(DTOModel):
+    resolver_id: UUID | None = None

@@ -25,7 +25,10 @@ class CertificateRequestService:
         if query:
             requests = self._filter(requests, query)
         page = Paginator.paginate(
-            items=requests, page_token=page_token, endpoint=self.endpoint
+            items=requests,
+            page_token=page_token,
+            endpoint=self.endpoint,
+            query_params={"q": query} if query else None,
         )
         return PageResult(
             items=certificate_request_summaries(page.items), links=page.links

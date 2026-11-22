@@ -1,277 +1,176 @@
 # RA Contract Emulator
 
-A lightweight FastAPI-based emulator for RA contract API schemas.
-It loads a seeded dataset of certificates, certificate requests, and users, then exposes them via a contract-aligned REST API.
+A deliberately small, stateful FastAPI emulator of the Registration Authority
+(RA) API consumed by **RA Data Platform (RADP)**. It produces synthetic X.509
+certificates, users, issuance requests, and revocation requests. It is for
+local development, integration testing, and simulated lifecycle workflows,
+**not** a real RA or a certificate management system.
 
----
+## Quick start
 
-## 🚀 Quick Start
+Use Python 3.14 and `uv` (the existing lockfile is retained):
 
-### 1. Install dependencies
-
-```bash
-uv sync
+```sh
+cp .env.example .env
+uv sync --frozen
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-### 2. Activate environment
+Or run `docker compose up --build` after creating `.env`. Docker Compose binds
+the port to the host's loopback interface by default. Open
+`http://127.0.0.1:8000/docs` for the OpenAPI UI.
 
-```bash
-source .venv/bin/activate
-```
+**First start:** the application initializes `data/emulator.sqlite3` and, if
+that database is empty, imports existing `data/seeds/*.json` files when present,
+or generates 100 synthetic certificates. The database **is not regenerated on
+restart**; simulated approvals survive restarts.
 
-### 3. Generate seed dataset
+To **deliberately discard all simulated data and regenerate** it:
 
-```bash
+```sh
 uv run python -m app.dataset.generate
 ```
 
-This creates JSON seed files in:
+This replaces all records in the configured SQLite database. Back up your
+database first if you need to keep existing workflow data.
 
-```
-data/seeds/
-```
+## Configuration
 
----
+Settings are loaded through `pydantic-settings` and cached by
+`get_settings()` (`@lru_cache(maxsize=1)`). `create_app(settings=Settings(...))`
+allows independent test applications to bypass the cache. Available variables:
 
-### 4. Run the API server
+| Environment variable | Default | Purpose |
+| --- | --- | --- |
+| `RADP_EMULATOR_API_ROOT` | `/api/ra` | API prefix |
+| `RADP_EMULATOR_DATABASE_PATH` | `./data/emulator.sqlite3` under the project | Persistent SQLite path |
+| `RADP_EMULATOR_CERTIFICATE_FOLDERS` | `default` | CSV folder names used **when first seeding** |
+| `RADP_EMULATOR_LATENCY_MS` | `0` | Inject latency into RA API requests |
+| `RADP_EMULATOR_FAILURE_RATE` | `0.0` | Probability of an injected RA API failure (0–1) |
+| `RADP_EMULATOR_FAILURE_STATUS` | `503` | HTTP status used for injected failures |
 
-```bash
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
+Folder changes do not redistribute data already persisted in SQLite. Run the
+explicit seed regeneration command if you want a different synthetic folder
+distribution. In tests that mutate environment variables, call
+`get_settings.cache_clear()` or pass an explicit `Settings` instance.
 
-Server will be available at:
+## Certificate folders and read contract
 
-```
-http://localhost:8000
-```
-
----
-
-## 📦 Architecture Overview
-
-The emulator is split into four main layers:
-
-### 1. Dataset Layer (`data/seeds`)
-
-* Loads JSON seed data
-* Converts raw JSON into Pydantic models
-* Entry point: `load_dataset()`
-
-Entities:
-
-* `Certificate`
-* `CertificateRequest`
-* `User`
-
----
-
-### 2. Schema Layer (`app/schemas`)
-
-Defines all contract models using Pydantic:
-
-* Strongly typed API models (`APIModel`)
-* CamelCase aliasing via `to_camel`
-* Response wrappers (`CertificatesResponse`, etc.)
-* Certificate and request domain models
-
----
-
-### 3. Emulator Layer (`app/emulator`)
-
-Core runtime logic:
-
-* **Engine**
-
-  * Executes requests
-  * Tracks request count
-  * Routes to handlers
-
-* **Router**
-
-  * Matches HTTP method + path
-  * Extracts path parameters
-
-* **Behaviors**
-
-  * Business logic per endpoint:
-
-    * `certificates.py`
-    * `cert_requests.py`
-    * `users.py`
-
----
-
-### 4. Interface Layer (`app/interfaces`)
-
-FastAPI routes that forward requests into the emulator engine.
-
-Example flow:
-
-```
-FastAPI route → EmulatorEngine → Router → Behavior → Response model → Serializer
-```
-
----
-
-## 📡 API Endpoints
-
-### Certificates
-
-#### List certificates
-
-```
+```http
 GET /api/ra/certificates
-```
-
-Query params:
-
-* `q` (optional) – filters by serial number or subject
-
----
-
-#### Get certificate by serial
-
-```
-GET /api/ra/certificates/{id}
-```
-
----
-
-### Certificate Requests
-
-```
+GET /api/ra/certificates?folder=default
+GET /api/ra/certificates?folder=archive
+GET /api/ra/certificates?folder=default&value=1234
+GET /api/ra/certificates/{certificate_id}
 GET /api/ra/certRequests
-```
-
----
-
-### Users
-
-```
 GET /api/ra/users
 ```
 
----
+Without a `folder` parameter, the certificates endpoint lists all folders in
+legacy insertion order. Supplying `folder` restricts the collection. If there
+is only one folder, `GET /certificates?folder=default` and
+`GET /certificates` give identical items, page by page. Unknown folders return
+an empty list; a certificate detail can be retrieved by UUID without specifying
+its folder.
 
-## 🧪 Dataset Generation
+Collections use `items`, optional `_links.next.href`, and opaque `pageToken`
+links. Default page size is **20**; search supports `q` and, for certificate and
+revocation lists, `value` as an alias. Follow the returned next URL rather than
+constructing offsets. Pagination links keep search and folder parameters.
 
-Seed data is generated using Faker (`ru_RU` locale).
+## Revocation requests: paginated reads and simulated writes
 
-Run:
-
-```bash
-uv run python -m app.dataset.generate
+```http
+GET  /api/ra/revRequests
+GET  /api/ra/revRequests?folder=default
+GET  /api/ra/revRequests?folder=default&pageToken=...
+GET  /api/ra/revRequests?value=1234
+GET  /api/ra/revRequests/{revRequestId}
+POST /api/ra/revRequests
+POST /api/ra/revRequests/{revRequestId}/approve
+POST /api/ra/revRequests/{revRequestId}/reject
 ```
 
-It generates:
+The default 100-certificate seed generates **34 completed revocations**,
+ensuring at least two pages. Completed seed requests link to corresponding
+certificates with `status=Revoked`. New requests begin in `Pending` and have
+no resolution timestamps until acted upon. Rejected requests leave the
+certificate valid, allowing a later request; approved requests change the
+linked certificate to `Revoked` and set its reason and `revokedWhen` in the
+**same SQLite transaction** as resolving the request.
 
-| File                 | Content                      |
-| -------------------- | ---------------------------- |
-| `users.json`         | Fake users                   |
-| `certificates.json`  | Certificates linked to users |
-| `cert_requests.json` | Certificate requests         |
+Create a request for an existing **valid** certificate:
 
----
+```http
+POST /api/ra/revRequests
+Content-Type: application/json
 
-## 🧠 Key Design Decisions
-
-### 1. Pydantic-first contract modeling
-
-All API entities are strict Pydantic models with alias mapping to match external contract formats.
-
----
-
-### 2. Root-based NameAttributes
-
-Certificate subject attributes are stored as OID-keyed dictionaries:
-
-```python
-"2.5.4.3" -> Common Name
-"2.5.4.4" -> Surname
+{"certificateId":"REPLACE-WITH-CERTIFICATE-UUID","revocationReason":"KeyCompromise"}
 ```
 
-Accessed via helper methods like:
+The response is `201 Created` with `status=Pending` and a `revRequestId`.
+Then approve or reject it:
 
-```python
-user.name_attributes.common_name()
+```http
+POST /api/ra/revRequests/{revRequestId}/approve
+Content-Type: application/json
+
+{}
 ```
 
----
+The optional body can contain `{"resolverId":"UUID"}`. A double approval,
+creation for a revoked certificate, or duplicate pending request returns `409`.
+Unknown certificate or request IDs return `404`; invalid UUIDs or unsupported
+reasons return `422`.
 
-### 3. Emulator engine abstraction
+State transitions:
 
-Instead of directly using FastAPI logic, requests go through:
+```text
+  (create) -> Pending ---approve--> Completed [certificate -> Revoked]
+                     \
+                      \--reject----> Rejected  [certificate stays VALID]
 
-```
-Engine → Router → Behavior → Dataset
-```
-
-This allows:
-
-* deterministic contract testing
-* replayable behavior
-* easier diff/validation later
-
----
-
-### 4. Serialization layer
-
-All Pydantic responses are normalized via:
-
-```python
-model_dump(mode="json", by_alias=True, exclude_none=True)
+  Rejected requests do not block a subsequent new request.
 ```
 
-Ensures strict contract output formatting.
+**Contract boundary:** `POST`, `approve`, `reject`, `Pending`, and `Rejected`
+are **emulator-defined** for testing. They are not claimed to reproduce the
+production RA's write endpoints or status vocabulary; use an anonymized
+production API contract to adapt them if necessary. The existing GET fields
+and camelCase naming are preserved.
 
----
+**Security:** write endpoints are intentionally unauthenticated for local
+simulation. Do not expose this emulator publicly or treat its database as
+sensitive/production certificate infrastructure.
 
-## 🧩 Project Structure
+## Storage and older JSON seeds
 
+`data/emulator.sqlite3` is the **active database**, not a JSON snapshot. It
+holds `records` with kind, stable ordinal, ID, folder index, and JSON-encoded
+Pydantic payload; SQLite transactions provide durable updates. This intentionally
+avoids a heavyweight ORM for a small emulator while keeping flexible API
+payloads. A separate `app.dataset.loader` supports one-time import of older
+`users.json`, `cert_requests.json`, `certificates.json`, and optional
+`rev_requests.json` from `data/seeds/` when SQLite is initially empty.
+
+Legacy missing-folder records are placed into the first configured folder;
+legacy placeholder revocation requests are ignored. After migration, the
+SQLite database is authoritative, even if the old JSON files change. Do not
+copy an active WAL database file using a bare file-copy operation; use SQLite's
+backup API or stop the emulator first.
+
+## Tests, API schema, and integration
+
+```sh
+uv run pytest
+uv run python -m scripts.export_openapi
 ```
-app/
-├── contract/        # validation + diff tools
-├── dataset/         # seed loader + generator
-├── emulator/        # runtime engine + behaviors
-├── interfaces/      # FastAPI routes
-├── schemas/         # Pydantic models (contract layer)
-└── main.py          # app entrypoint
-```
 
----
+Contract and integration tests cover pagination, cross-entity consistency,
+mutation state transitions, concurrency, restart durability, cached settings,
+legacy JSON import, and failure injection. If using the combined RA stack,
+run `python verify_alignment.py` in the archive root to exercise RADP's real
+RA client against the emulator without PostgreSQL.
 
-## 🛠 Development Notes
-
-### Regenerate dataset after schema changes
-
-Always run:
-
-```bash
-uv run python -m app.dataset.generate
-```
-
----
-
-### Common debugging flow
-
-1. Check dataset JSON in `data/seeds/`
-2. Validate schema parsing via:
-
-   ```python
-   model_validate()
-   ```
-3. Inspect emulator behavior in:
-
-   ```
-   app/emulator/behaviors/
-   ```
-
----
-
-## 📌 Future Improvements (optional ideas)
-
-* Add pagination to all list endpoints
-* Implement proper `NotFoundError → HTTP 404 mapping`
-* Add contract diff CLI runner
-* Add OpenAPI tagging per domain
-* Add versioned datasets
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the architectural assessment,
+tradeoffs, and possible next steps.

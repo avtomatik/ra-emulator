@@ -2,7 +2,8 @@ import base64
 import hashlib
 import struct
 from dataclasses import dataclass
-from typing import Generic, Sequence, TypeVar
+from typing import Generic, Mapping, Sequence, TypeVar
+from urllib.parse import urlencode
 
 from app.api.dto.pagination import Links, NextLink
 from app.emulator.errors import InvalidPageToken
@@ -27,6 +28,7 @@ class Paginator:
         page_token: str | None,
         endpoint: str,
         page_size: int = DEFAULT_PAGE_SIZE,
+        query_params: Mapping[str, str] | None = None,
     ) -> Page[T]:
         offset = cls.decode(page_token)
         page = list(items[offset : offset + page_size])
@@ -34,9 +36,13 @@ class Paginator:
         if next_offset >= len(items):
             return Page(items=page, links=None)
         token = cls.encode(next_offset)
+        parameters = dict(query_params or {})
+        parameters["pageToken"] = token
         return Page(
             items=page,
-            links=Links(next=NextLink(href=f"{endpoint}?pageToken={token}")),
+            links=Links(
+                next=NextLink(href=f"{endpoint}?{urlencode(parameters)}")
+            ),
         )
 
     @staticmethod
@@ -69,7 +75,7 @@ class Paginator:
             field1 = struct.unpack("<I", raw[:4])[0]
             # Reverse our encoding.
             offset = (27_200_000 - field1) // 1_000
-            if offset < 0:
+            if offset < 0 or Paginator.encode(offset) != token:
                 raise ValueError
             return offset
         except (ValueError, struct.error, UnicodeDecodeError) as exc:

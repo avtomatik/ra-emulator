@@ -7,7 +7,9 @@ class Gender(Enum):
 
 
 class RevocationRequestStatus(StrEnum):
+    PENDING = "Pending"
     COMPLETED = "Completed"
+    REJECTED = "Rejected"
 
 
 class RevocationReason(StrEnum):

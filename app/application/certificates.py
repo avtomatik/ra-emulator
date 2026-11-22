@@ -18,13 +18,27 @@ class CertificateService:
         self.endpoint = f"{api_root}{self.RESOURCE}"
 
     def list(
-        self, *, query: str | None, page_token: str | None
+        self,
+        *,
+        query: str | None,
+        page_token: str | None,
+        folder: str | None = None,
+        search_parameter: str = "q",
     ) -> PageResult[CertificateSummaryDTO]:
-        certificates = self.repository.all()
+        certificates = self.repository.all(folder=folder)
         if query:
             certificates = self._filter(certificates, query)
+        # Pagination links must retain the chosen collection and search query.
+        parameters = {}
+        if folder is not None:
+            parameters["folder"] = folder
+        if query:
+            parameters[search_parameter] = query
         page = Paginator.paginate(
-            items=certificates, page_token=page_token, endpoint=self.endpoint
+            items=certificates,
+            page_token=page_token,
+            endpoint=self.endpoint,
+            query_params=parameters,
         )
         return PageResult(
             items=certificate_summaries(page.items), links=page.links

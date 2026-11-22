@@ -1,22 +1,22 @@
 import base64
-import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from random import Random
 
 from faker import Faker
 
-from app.config.paths import SEEDS_DIR
+from app.config.settings import Settings, get_settings
 from app.dataset.crypto import build_x509_certificate
+from app.dataset.models import Dataset
 from app.domain.constants.enums import Gender
 from app.domain.constants.oids import OID
+from app.domain.models.certificate import Certificate
+from app.domain.models.certificate_request import CertificateRequest
+from app.domain.models.revocation_request import RevocationRequest
+from app.domain.models.user import User
+from app.storage.sqlite import SQLiteStore
 
 fake = Faker("ru_RU")
-
-
-def write(name, data):
-    with (SEEDS_DIR / f"{name}.json").open("w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
 
 
 def make_user(rng: Random):
@@ -46,13 +46,15 @@ def make_user(rng: Random):
             OID.T: fake.job(),
             OID.GUID: fake.numerify(text="#" * 6),
         },
-        "createdWhen": datetime.now(timezone.utc).isoformat(),
+        "createdWhen": (
+            datetime.now(timezone.utc) - timedelta(hours=2)
+        ).isoformat(),
         "distinguishedName": f"CN={cn},O={fake.company()}",
     }
 
 
 def make_cert_request(user, rng: Random):
-    created = datetime.now(timezone.utc)
+    created = datetime.now(timezone.utc) - timedelta(minutes=90)
     return {
         "id": str(uuid.uuid4()),
         "userId": user["id"],
@@ -64,7 +66,7 @@ def make_cert_request(user, rng: Random):
 
 
 def make_certificate(user, request, rng: Random):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc) - timedelta(hours=1)
     serial = fake.hexify(text="^" * 34)
     not_before = now - timedelta(days=1)
     not_after = now + timedelta(days=365)
@@ -96,47 +98,89 @@ def make_certificate(user, request, rng: Random):
     }
 
 
-def make_rev_request(user, rng: Random):
-    created = datetime.now(timezone.utc)
-    resolved = datetime.now(timezone.utc)
-    auth_replied = datetime.now(timezone.utc)
+def make_rev_request(user, cert):
+    """Create a completed request referring to a real revoked certificate."""
+    created = datetime.now(timezone.utc) - timedelta(minutes=20)
+    resolved = created + timedelta(minutes=5)
+    auth_replied = resolved + timedelta(minutes=1)
     return {
         "revRequestId": str(uuid.uuid4()),
         "createdWhen": created.isoformat(),
         "resolvedWhen": resolved.isoformat(),
         "authRepliedWhen": auth_replied.isoformat(),
-        "serialNumber": "to-do",
-        "thumbprint": "to-do",
-        "status": "RevocationRequestStatus:TO_DO",
+        "serialNumber": cert["serialNumber"],
+        "thumbprint": cert["thumbprint"],
+        "status": "Completed",
+        "certificateId": cert["id"],
         "userId": user["id"],
+        "revocationReason": "KeyCompromise",
+        "folder": cert["folder"],
     }
 
 
-def main(number: int = 100, seed: int = 42):
+def build_dataset(
+    number: int = 100,
+    seed: int = 42,
+    *,
+    folders: tuple[str, ...] = ("default",),
+) -> Dataset:
     rng = Random(seed)
     Faker.seed(seed)
+    if not folders:
+        raise ValueError("At least one folder is required")
     users = []
     cert_requests = []
     certs = []
     rev_requests = []
-    for _ in range(number):
+    for index in range(number):
         user = make_user(rng)
         cert_request = make_cert_request(user, rng)
         cert = make_certificate(user, cert_request, rng)
-        rev_request = make_rev_request(user, rng)
+        cert["folder"] = folders[index % len(folders)]
+        # A deterministic subset of certificates has completed revocations.
+        if index % 3 == 0:
+            rev_request = make_rev_request(user, cert)
+            cert["status"] = "Revoked"
+            cert["revokedWhen"] = rev_request["resolvedWhen"]
+            cert["revocationReason"] = rev_request["revocationReason"]
+            rev_requests.append(rev_request)
         users.append(user)
         cert_requests.append(cert_request)
         certs.append(cert)
-        rev_requests.append(rev_request)
-    write("users", users)
-    write("cert_requests", cert_requests)
-    write("certificates", certs)
-    write("rev_requests", rev_requests)
-    print("✔ deterministic dataset generated")
-    print(f"users={len(users)}")
-    print(f"cert_requests={len(cert_requests)}")
-    print(f"certificates={len(certs)}")
-    print(f"rev_requests={len(rev_requests)}")
+    return Dataset(
+        users=tuple(User.model_validate(item) for item in users),
+        cert_requests=tuple(
+            CertificateRequest.model_validate(item) for item in cert_requests
+        ),
+        certificates=tuple(Certificate.model_validate(item) for item in certs),
+        rev_requests=tuple(
+            RevocationRequest.model_validate(item) for item in rev_requests
+        ),
+    )
+
+
+def main(
+    number: int = 100,
+    seed: int = 42,
+    *,
+    folders: tuple[str, ...] | None = None,
+    settings: Settings | None = None,
+) -> None:
+    """Explicit destructive reset of the SQLite seed dataset."""
+    settings = settings or get_settings()
+    dataset = build_dataset(
+        number=number,
+        seed=seed,
+        folders=folders or settings.certificate_folders,
+    )
+    store = SQLiteStore(settings.database_path)
+    store.initialize()
+    store.replace_dataset(dataset)
+    print("✔ seeded dataset generated")
+    print(f"users={len(dataset.users)}")
+    print(f"cert_requests={len(dataset.cert_requests)}")
+    print(f"certificates={len(dataset.certificates)}")
+    print(f"rev_requests={len(dataset.rev_requests)}")
 
 
 if __name__ == "__main__":

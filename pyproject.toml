@@ -1,7 +1,7 @@
 [project]
 name = "ra-emulator"
-version = "0.1.0"
-description = "Add your description here"
+version = "1.1.0"
+description = "Stateful SQLite-backed Registration Authority contract emulator"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [

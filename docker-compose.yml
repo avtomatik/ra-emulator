@@ -6,9 +6,11 @@ services:
     image: ra-emulator:latest
     container_name: emulator
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
-      - ./data/seeds:/app/data/seeds
+      - ./data:/app/data
+    env_file:
+      - .env
     environment:
       PYTHONUNBUFFERED: "1"
     restart: unless-stopped

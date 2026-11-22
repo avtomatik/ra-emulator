@@ -27,3 +27,15 @@ def test_non_numeric_page_token_returns_400(client, certificates_url):
     token = base64.urlsafe_b64encode(b"abc").decode()
     response = client.get(certificates_url, params={"pageToken": token})
     assert response.status_code == 400
+
+
+def test_modified_valid_page_token_returns_400(client, certificates_url):
+    from urllib.parse import parse_qs, urlsplit
+
+    first = client.get(certificates_url).json()
+    token = parse_qs(urlsplit(first["_links"]["next"]["href"]).query)[
+        "pageToken"
+    ][0]
+    modified = token[:-1] + ("A" if token[-1] != "A" else "B")
+    response = client.get(certificates_url, params={"pageToken": modified})
+    assert response.status_code == 400

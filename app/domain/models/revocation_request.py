@@ -9,11 +9,11 @@ from app.domain.models.base import DomainModel
 class RevocationRequest(DomainModel):
     rev_request_id: UUID
     created_when: datetime
-    resolved_when: datetime
-    auth_replied_when: datetime
     serial_number: str
     thumbprint: str
     status: RevocationRequestStatus
+    resolved_when: datetime | None = None
+    auth_replied_when: datetime | None = None
     certificate_id: UUID | None = None
     user_id: UUID | None = None
     creator_id: UUID | None = None
