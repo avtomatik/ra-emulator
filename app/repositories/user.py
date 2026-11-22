@@ -1,9 +1,7 @@
-from uuid import UUID
-
 from app.domain.models.user import User
-from app.repositories.base import InMemoryRepository
+from app.repositories.base import SQLiteRepository
 
 
-class UserRepository(InMemoryRepository[User]):
-    def by_id(self, user_id: UUID) -> User | None:
-        return self.find(lambda user: user.id == user_id)
+class UserRepository(SQLiteRepository[User]):
+    kind = "users"
+    model_type = User

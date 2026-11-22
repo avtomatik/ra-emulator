@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "RA Contract Emulator",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "paths": {
     "/api/ra/certificates": {
@@ -27,6 +27,22 @@
             }
           },
           {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Value"
+            }
+          },
+          {
             "name": "pageToken",
             "in": "query",
             "required": false,
@@ -40,6 +56,22 @@
                 }
               ],
               "title": "Pagetoken"
+            }
+          },
+          {
+            "name": "folder",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Folder"
             }
           }
         ],
@@ -192,6 +224,290 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CertificateRequestDetailDTO"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ra/revRequests": {
+      "get": {
+        "summary": "List Revocation Requests",
+        "operationId": "list_revocation_requests_api_ra_revRequests_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "value",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Value"
+            }
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pagetoken"
+            }
+          },
+          {
+            "name": "folder",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Folder"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResult_RevocationRequestSummaryDTO_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Revocation Request",
+        "operationId": "create_revocation_request_api_ra_revRequests_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRevocationRequestDTO"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevocationRequestDetailDTO"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ra/revRequests/{request_id}/approve": {
+      "post": {
+        "summary": "Approve Revocation Request",
+        "operationId": "approve_revocation_request_api_ra_revRequests__request_id__approve_post",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ResolveRevocationRequestDTO"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevocationRequestDetailDTO"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ra/revRequests/{request_id}/reject": {
+      "post": {
+        "summary": "Reject Revocation Request",
+        "operationId": "reject_revocation_request_api_ra_revRequests__request_id__reject_post",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ResolveRevocationRequestDTO"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevocationRequestDetailDTO"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ra/revRequests/{request_id}": {
+      "get": {
+        "summary": "Get Revocation Request",
+        "operationId": "get_revocation_request_api_ra_revRequests__request_id__get",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevocationRequestDetailDTO"
                 }
               }
             }
@@ -993,6 +1309,36 @@
         ],
         "title": "CertificateSummaryDTO"
       },
+      "CreateRevocationRequestDTO": {
+        "properties": {
+          "certificateId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Certificateid"
+          },
+          "revocationReason": {
+            "$ref": "#/components/schemas/RevocationReason",
+            "default": "KeyCompromise"
+          },
+          "creatorId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creatorid"
+          }
+        },
+        "type": "object",
+        "required": [
+          "certificateId"
+        ],
+        "title": "CreateRevocationRequestDTO"
+      },
       "Extension": {
         "properties": {
           "oid": {
@@ -1508,6 +1854,32 @@
         ],
         "title": "PageResult[CertificateSummaryDTO]"
       },
+      "PageResult_RevocationRequestSummaryDTO_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RevocationRequestSummaryDTO"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "_links": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Links"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "PageResult[RevocationRequestSummaryDTO]"
+      },
       "PageResult_UserSummaryDTO_": {
         "properties": {
           "items": {
@@ -1533,6 +1905,281 @@
           "items"
         ],
         "title": "PageResult[UserSummaryDTO]"
+      },
+      "ResolveRevocationRequestDTO": {
+        "properties": {
+          "resolverId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolverid"
+          }
+        },
+        "type": "object",
+        "title": "ResolveRevocationRequestDTO"
+      },
+      "RevocationReason": {
+        "type": "string",
+        "enum": [
+          "KeyCompromise"
+        ],
+        "title": "RevocationReason"
+      },
+      "RevocationRequestDetailDTO": {
+        "properties": {
+          "revRequestId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Revrequestid"
+          },
+          "createdWhen": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Createdwhen"
+          },
+          "serialNumber": {
+            "type": "string",
+            "title": "Serialnumber"
+          },
+          "thumbprint": {
+            "type": "string",
+            "title": "Thumbprint"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RevocationRequestStatus"
+          },
+          "resolvedWhen": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolvedwhen"
+          },
+          "authRepliedWhen": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authrepliedwhen"
+          },
+          "certificateId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Certificateid"
+          },
+          "userId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Userid"
+          },
+          "creatorId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creatorid"
+          },
+          "creatorName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creatorname"
+          },
+          "creatorLogin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creatorlogin"
+          },
+          "resolverId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolverid"
+          },
+          "resolverName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolvername"
+          },
+          "resolverLogin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolverlogin"
+          },
+          "revocationReason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RevocationReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rawRequest": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rawrequest"
+          },
+          "folder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folder"
+          }
+        },
+        "type": "object",
+        "required": [
+          "revRequestId",
+          "createdWhen",
+          "serialNumber",
+          "thumbprint",
+          "status"
+        ],
+        "title": "RevocationRequestDetailDTO"
+      },
+      "RevocationRequestStatus": {
+        "type": "string",
+        "enum": [
+          "Pending",
+          "Completed",
+          "Rejected"
+        ],
+        "title": "RevocationRequestStatus"
+      },
+      "RevocationRequestSummaryDTO": {
+        "properties": {
+          "revRequestId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Revrequestid"
+          },
+          "createdWhen": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Createdwhen"
+          },
+          "serialNumber": {
+            "type": "string",
+            "title": "Serialnumber"
+          },
+          "thumbprint": {
+            "type": "string",
+            "title": "Thumbprint"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RevocationRequestStatus"
+          },
+          "resolvedWhen": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolvedwhen"
+          },
+          "authRepliedWhen": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authrepliedwhen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "revRequestId",
+          "createdWhen",
+          "serialNumber",
+          "thumbprint",
+          "status"
+        ],
+        "title": "RevocationRequestSummaryDTO"
       },
       "UserSummaryDTO": {
         "properties": {

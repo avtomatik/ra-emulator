@@ -1,28 +1,18 @@
 FROM python:3.14-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:${PATH}"
 
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        build-essential \
-        libffi-dev \
-        libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY pyproject.toml uv.lock ./
-
+COPY pyproject.toml uv.lock README.md ./
 RUN pip install --no-cache-dir uv \
-    && uv pip install --system .
+    && uv sync --frozen --no-dev --no-install-project
 
 COPY app ./app
-
 COPY entrypoint.sh ./entrypoint.sh
-
 RUN chmod +x ./entrypoint.sh
 
 EXPOSE 8000
-
-ENTRYPOINT [ "/app/entrypoint.sh" ]
+ENTRYPOINT ["/app/entrypoint.sh"]

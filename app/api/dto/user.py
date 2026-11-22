@@ -1,7 +1,6 @@
 from datetime import datetime
 from uuid import UUID
 
-
 from app.domain.models.name_attributes import NameAttributes
 
 from .base import DTOModel

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from app.domain.models.certificate import Certificate
 from app.domain.models.certificate_request import CertificateRequest
+from app.domain.models.revocation_request import RevocationRequest
 from app.domain.models.user import User
 
 
@@ -9,4 +10,5 @@ from app.domain.models.user import User
 class Dataset:
     certificates: tuple[Certificate, ...]
     cert_requests: tuple[CertificateRequest, ...]
+    rev_requests: tuple[RevocationRequest, ...]
     users: tuple[User, ...]

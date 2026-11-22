@@ -1,7 +1,6 @@
 from datetime import datetime
 from uuid import UUID
 
-
 from app.domain.models.extension import Extension
 from app.domain.models.name_attributes import NameAttributes
 
